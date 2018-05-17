@@ -9,31 +9,17 @@ class DynamicResolver(object):
     A resolver which calculates the answers to certain queries based on the
     query type and name.
     """
-    _pattern = 'workstation'
-    _network = '172.0.2'
-
-    def _dynamicResponseRequired(self, query):
-        """
-        Check the query to determine if a dynamic response is required.
-        """
-        if query.type == dns.A:
-            labels = query.name.name.split('.')
-            if labels[0].startswith(self._pattern):
-                return True
-
-        return False
+    _ip = '192.168.0.1'
+    _ipqueue = Queue()
 
     def _doDynamicResponse(self, query):
         """
         Calculate the response to a query.
         """
         name = query.name.name
-        labels = name.split('.')
-        parts = labels[0].split(self._pattern)
-        lastOctet = int(parts[1])
         answer = dns.RRHeader(
             name=name,
-            payload=dns.Record_A(address=b'%s.%s' % (self._network, lastOctet)))
+            payload=dns.Record_A(address=b'%s' % (self._ip)))
         answers = [answer]
         authority = []
         additional = []
@@ -44,10 +30,14 @@ class DynamicResolver(object):
         Check if the query should be answered dynamically, otherwise dispatch to
         the fallback resolver.
         """
-        if self._dynamicResponseRequired(query):
-            return defer.succeed(self._doDynamicResponse(query))
-        else:
-            return defer.fail(error.DomainError())
+        try:
+             self._ip = self._ipqueue.get(block=False)
+             print self._ip
+        except Exception as e:
+             print "nothing in the queue: {}".format(type(e))
+             print "the IP is still: {}".format(self._ip)
+        print "The query is: {} and the IP is: {}".format(query, self._ip)
+        return defer.succeed(self._doDynamicResponse(query))
 
 
 def webserver(pq):
@@ -60,14 +50,17 @@ def webserver(pq):
     @webapp.route('/ip/<ip>')
     def getIP(request, ip):
         pq.put(ip)
+        print "ip is: {}".format(ip)
         return "ip is: {}".format(ip)
 
     webapp.run(host="localhost", port=8080)
 
 
 def dnsserver(pq):
+    dynresolver = DynamicResolver()
+    dynresolver._ipqueue = pq
     factory = server.DNSServerFactory(
-        clients=[DynamicResolver(), client.Resolver(resolv='/etc/resolv.conf')]
+        clients=[dynresolver, client.Resolver(resolv='/etc/resolv.conf')]
     )
 
     protocol = dns.DNSDatagramProtocol(controller=factory)
