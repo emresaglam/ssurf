@@ -19,7 +19,8 @@ I wanted to a little research on automating this attack after a real life scenar
 * Send an IP to the REST API: `curl http://localhost:8080/ip/10.0.0.1`
 * Do a resolution of any domain name to your local DNS server on port 10053: `dig -p 10053 emresaglam.com @localhost`
 * You should see the domain resolving to the IP that you just sent to your server:
-```$ dig -p 10053 emresaglam.com @localhost
+```
+$ dig -p 10053 emresaglam.com @localhost
 
 ; <<>> DiG 9.10.6 <<>> -p 10053 emresaglam.com @localhost
 ;; global options: +cmd
