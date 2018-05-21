@@ -2,12 +2,13 @@ from multiprocessing import Process, Queue
 from twisted.internet import reactor, endpoints, defer
 from twisted.names import client, dns, error, server
 from klein import Klein
+import socket
+import re
 
 
 class DynamicResolver(object):
     """
-    A resolver which calculates the answers to certain queries based on the
-    query type and name.
+    A resolver which returns an IP that was fed into the REST API.
     """
     _ip = '192.168.0.1'
     _ipqueue = Queue()
@@ -27,8 +28,7 @@ class DynamicResolver(object):
 
     def query(self, query, timeout=None):
         """
-        Check if the query should be answered dynamically, otherwise dispatch to
-        the fallback resolver.
+        query the name
         """
         try:
              self._ip = self._ipqueue.get(block=False)
@@ -36,7 +36,7 @@ class DynamicResolver(object):
         except Exception as e:
              print "nothing in the queue: {}".format(type(e))
              print "the IP is still: {}".format(self._ip)
-        print "The query is: {} and the IP is: {}".format(query, self._ip)
+        print "The query is: {} and the IP is: {}".format(query.name.name, self._ip)
         return defer.succeed(self._doDynamicResponse(query))
 
 
@@ -49,9 +49,19 @@ def webserver(pq):
 
     @webapp.route('/ip/<ip>')
     def getIP(request, ip):
-        pq.put(ip)
-        print "ip is: {}".format(ip)
-        return "ip is: {}".format(ip)
+        # We only need ipv4 dotted-quad. Quick regex check, then test the validity of the IP
+        if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$",ip):
+            try:
+                socket.inet_aton(ip)
+                pq.put(ip)
+                print "ip is: {}".format(ip)
+                return "ip is: {}".format(ip)
+            except socket.error:
+                print "input is not an IP."
+                return "This is an IP! Read the RFC 791: https://tools.ietf.org/html/rfc791"
+        else:
+            print "input is not an IP."
+            return "This is not an IP! Read the RFC 791: https://tools.ietf.org/html/rfc791"
 
     webapp.run(host="localhost", port=8080)
 
