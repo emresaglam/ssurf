@@ -63,7 +63,7 @@ def webserver(pq):
             print "input is not an IP."
             return "This is not an IP! Read the RFC 791: https://tools.ietf.org/html/rfc791"
 
-    webapp.run(host="localhost", port=8080)
+    webapp.run(host="0.0.0.0", port=8080)
 
 
 def dnsserver(pq):
@@ -74,8 +74,8 @@ def dnsserver(pq):
     )
 
     protocol = dns.DNSDatagramProtocol(controller=factory)
-    reactor.listenUDP(10053, protocol)
-    reactor.listenTCP(10053, factory)
+    reactor.listenUDP(10053, protocol, interface="0.0.0.0")
+    reactor.listenTCP(10053, factory, interface="0.0.0.0")
 
     reactor.run()
 
