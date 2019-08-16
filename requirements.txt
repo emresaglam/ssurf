@@ -1,2 +1,2 @@
-Twisted==18.4.0
+Twisted==19.7.0
 klein==17.10.0
